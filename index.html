@@ -188,4 +188,266 @@
             border-radius: 25px;
             font-weight: bold;
             cursor: pointer;
-            box-shadow:
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+
+        .mode-btn.editing-active {
+            background-color: #28a745;
+        }
+        
+        .reset-btn {
+            background: none;
+            border: none;
+            color: #bbb;
+            cursor: pointer;
+            font-size: 0.8rem;
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>SNCF Retard Collector</h1>
+        <p>Le jeu dont vous êtes la victime passive</p>
+    </header>
+
+    <div class="time-counter">
+        ⏳ TEMPS DE VIE PERDU CUMULÉ
+        <div class="time-display" id="total-time-display">0h 00min</div>
+    </div>
+
+    <h2 class="section-title">🏆 Tableau d'Honneur (Top Retards)</h2>
+    <div class="stats-container" id="stats-box">
+        </div>
+
+    <div id="editor-section-title" style="display:none;"><h2 class="section-title">➕ Ajouter un nouveau raccourci</h2></div>
+    <div class="custom-form" id="custom-form-box">
+        <input type="text" id="custom-title" placeholder="Nom du raccourci (Ex: Incident Voyageur, Grève...)">
+        <input type="text" id="custom-desc" placeholder="Description courte (Ex: Quelqu'un a encore tiré le signal...)">
+        <button onclick="addShortcutCause()">Ajouter ce motif aux raccourcis</button>
+    </div>
+
+    <h2 class="section-title" id="list-title">⏱️ Valider un retard</h2>
+    <div class="grid" id="achievements-grid">
+        </div>
+
+    <div class="bottom-controls">
+        <button class="mode-btn" id="toggle-mode-btn" onclick="toggleEditMode()">⚙️ Modifier les causes / Raccourcis</button>
+        <button class="reset-btn" onclick="resetStats()">Réinitialiser toutes les données de l'application</button>
+    </div>
+
+    <script>
+        // Liste de base initiale officielle
+        const defaultCauses = [
+            { id: 'installation_reseau', title: 'Panne d\'une installation du réseau ferré', desc: 'Anomalie technique non spécifiée sur les infrastructures.' },
+            { id: 'signalisation', title: 'Panne de signalisation', desc: 'Le grand classique des aiguillages capricieux.' },
+            { id: 'materiel', title: 'Panne de matériel roulant', desc: 'La locomotive a décidé de prendre sa retraite aujourd\'hui.' },
+            { id: 'alimentation', title: 'Défaut d\'alimentation électrique', desc: 'Une histoire de caténaire décrochée ou de sous-station.' },
+            { id: 'circulation', title: 'Gestion de la circulation', desc: 'Attente d\'un train de correspondance ou embouteillage de fer.' },
+            { id: 'preparation', title: 'Difficultés de préparation du train', desc: 'La rame n\'était pas prête ou est arrivée en retard.' },
+            { id: 'personnel', title: 'Indisponibilité du personnel', desc: 'Le conducteur ou les contrôleurs sont coincés ailleurs.' },
+            { id: 'personnes_voies', title: 'Présence de personnes sur les voies', desc: 'Intrusion dans les emprises ferroviaires, sécurité avant tout.' },
+            { id: 'accident', title: 'Accident de personne', desc: 'Procédure officielle et interruption majeure.' },
+            { id: 'meteo', title: 'Conditions météo défavorables', desc: 'Feu de talus, tempête, ou les mythiques feuilles mortes.' },
+            { id: 'bagage', title: 'Bagage abandonné', desc: 'Alerte colis suspect. Place aux démineurs.' },
+            { id: 'malveillance', title: 'Acte de malveillance / Sabotage', desc: 'Vol de câbles de cuivre ou dégradations.' }
+        ];
+
+        // Flag pour savoir si on est en mode édition
+        let isEditMode = false;
+
+        // Charger l'état de la liste depuis le stockage (ou utiliser la liste par défaut au premier démarrage)
+        let activeCausesList = JSON.parse(localStorage.getItem('sncf_active_causes')) || defaultCauses;
+        let scores = JSON.parse(localStorage.getItem('sncf_scores')) || {};
+        let timeRecords = JSON.parse(localStorage.getItem('sncf_time_records')) || {};
+
+        function saveAll() {
+            localStorage.setItem('sncf_scores', JSON.stringify(scores));
+            localStorage.setItem('sncf_active_causes', JSON.stringify(activeCausesList));
+            localStorage.setItem('sncf_time_records', JSON.stringify(timeRecords));
+            render();
+        }
+
+        function toggleEditMode() {
+            isEditMode = !isEditMode;
+            const btn = document.getElementById('toggle-mode-btn');
+            const form = document.getElementById('custom-form-box');
+            const formTitle = document.getElementById('editor-section-title');
+            const listTitle = document.getElementById('list-title');
+
+            if(isEditMode) {
+                btn.innerText = "✅ Quitter le mode modification";
+                btn.classList.add('editing-active');
+                form.style.display = 'flex';
+                formTitle.style.display = 'block';
+                listTitle.innerText = "⚙️ Suppression des causes de la liste";
+            } else {
+                btn.innerText = "⚙️ Modifier les causes / Raccourcis";
+                btn.classList.remove('editing-active');
+                form.style.display = 'none';
+                formTitle.style.display = 'none';
+                listTitle.innerText = "⏱️ Valider un retard";
+            }
+            render();
+        }
+
+        function increment(id) {
+            const minutesInput = prompt("Combien de minutes de retard pour ce train ?");
+            const minutes = parseInt(minutesInput, 10);
+
+            if (isNaN(minutes) || minutes <= 0) {
+                alert("Action annulée ou durée invalide.");
+                return;
+            }
+
+            if (!scores[id]) scores[id] = 0;
+            if (!timeRecords[id]) timeRecords[id] = [];
+
+            scores[id]++;
+            timeRecords[id].push(minutes);
+            saveAll();
+        }
+
+        function decrement(id) {
+            if (!scores[id] || scores[id] <= 0) return;
+
+            if(confirm("Voulez-vous vraiment annuler la dernière entrée pour ce retard ?")) {
+                scores[id]--;
+                if (timeRecords[id] && timeRecords[id].length > 0) {
+                    timeRecords[id].pop();
+                }
+                saveAll();
+            }
+        }
+
+        // Ajouter un nouveau raccourci (SANS forcer de point de retard direct)
+        function addShortcutCause() {
+            const titleInput = document.getElementById('custom-title');
+            const descInput = document.getElementById('custom-desc');
+            const title = titleInput.value.trim();
+            const desc = descInput.value.trim() || "Raccourci personnalisé.";
+
+            if (!title) {
+                alert("Donne un nom à ton raccourci !");
+                return;
+            }
+
+            const id = 'custom_' + Date.now();
+            activeCausesList.push({ id, title, desc });
+            scores[id] = 0;
+            timeRecords[id] = [];
+
+            titleInput.value = '';
+            descInput.value = '';
+
+            saveAll();
+        }
+
+        // Supprimer définitivement une cause/raccourci de la liste affichée
+        function deleteCauseFromList(id) {
+            const cause = activeCausesList.find(c => c.id === id);
+            if(confirm(`Voulez-vous supprimer le motif "${cause.title}" de vos raccourcis ? (Les statistiques déjà enregistrées pour ce motif seront conservées au cas où).`)) {
+                activeCausesList = activeCausesList.filter(c => c.id !== id);
+                saveAll();
+            }
+        }
+
+        function resetStats() {
+            if(confirm("ATTENTION : Cela va réinitialiser TOUTES tes statistiques et restaurer la liste SNCF par défaut. Continuer ?")) {
+                scores = {};
+                timeRecords = {};
+                activeCausesList = [...defaultCauses];
+                isEditMode = false;
+                
+                // Forcer la fermeture visuelle du mode édition
+                document.getElementById('toggle-mode-btn').innerText = "⚙️ Modifier les causes / Raccourcis";
+                document.getElementById('toggle-mode-btn').classList.remove('editing-active');
+                document.getElementById('custom-form-box').style.display = 'none';
+                document.getElementById('editor-section-title').style.display = 'none';
+                document.getElementById('list-title').innerText = "⏱️ Valider un retard";
+                
+                saveAll();
+            }
+        }
+
+        function render() {
+            let totalMinutes = 0;
+
+            // Calcul global du temps de vie perdu
+            Object.keys(timeRecords).forEach(id => {
+                if(timeRecords[id]) {
+                    totalMinutes += timeRecords[id].reduce((sum, current) => sum + current, 0);
+                }
+            });
+
+            const hours = Math.floor(totalMinutes / 60);
+            const remainingMinutes = totalMinutes % 60;
+            document.getElementById('total-time-display').innerText = `${hours}h ${remainingMinutes < 10 ? '0' : ''}${remainingMinutes}min`;
+
+            // Rendu de la grille
+            const grid = document.getElementById('achievements-grid');
+            grid.innerHTML = '';
+            
+            if(activeCausesList.length === 0) {
+                grid.innerHTML = "<p style='grid-column: 1/-1; text-align:center; color:#888; font-style:italic; padding: 20px;'>Ta liste de raccourcis est vide. Passe en mode modification pour en rajouter ou réinitialise l'appli !</p>";
+            }
+
+            activeCausesList.forEach(c => {
+                const currentCount = scores[c.id] || 0;
+                
+                grid.innerHTML += `
+                    <div class="card">
+                        <div class="card-content">
+                            <div class="card-title">${c.title}</div>
+                            <div class="card-desc">${c.desc}</div>
+                        </div>
+                        <div class="actions">
+                            <button class="btn-action btn-remove" onclick="decrement('${c.id}')" style="display: ${(!isEditMode && currentCount > 0) ? 'flex' : 'none'}">-</button>
+                            <button class="btn-action btn-add" onclick="increment('${c.id}')" style="display: ${!isEditMode ? 'flex' : 'none'}">+</button>
+                            
+                            <button class="btn-action btn-delete" onclick="deleteCauseFromList('${c.id}')" style="display: ${isEditMode ? 'flex' : 'none'}">🗑️</button>
+                        </div>
+                    </div>
+                `;
+            });
+
+            // Rendu du classement (Top Causes)
+            const statsBox = document.getElementById('stats-box');
+            
+            // On veut pouvoir afficher dans les stats même les causes supprimées de la grille si elles ont un score > 0
+            // Pour ça, on crée une map de dictionnaire pour retrouver facilement les titres
+            const allKnownCauses = [...defaultCauses, ...activeCausesList];
+            const getTitle = (id) => {
+                const found = allKnownCauses.find(c => c.id === id);
+                return found ? found.title : "Motif supprimé";
+            };
+
+            const sortedScores = Object.keys(scores)
+                .filter(id => scores[id] > 0)
+                .sort((a, b) => scores[b] - scores[a]);
+
+            if(sortedScores.length === 0) {
+                statsBox.innerHTML = "<p style='text-align:center; color:#888; font-style:italic;'>Aucun retard validé pour l'instant.</p>";
+            } else {
+                statsBox.innerHTML = sortedScores.map(id => {
+                    const totalCauseMinutes = (timeRecords[id] || []).reduce((sum, curr) => sum + curr, 0);
+                    const cHours = Math.floor(totalCauseMinutes / 60);
+                    const cMins = totalCauseMinutes % 60;
+                    const durationStr = cHours > 0 ? `${cHours}h${cMins}` : `${cMins}min`;
+
+                    return `
+                        <div class="stat-line">
+                            <span>${getTitle(id)} <small style="color:#888;">(${durationStr})</small></span>
+                            <span class="badge-count">${scores[id]} x</span>
+                        </div>
+                    `;
+                }).join('');
+            }
+        }
+
+        // Premier lancement au chargement de la page
+        render();
+    </script>
+</body>
+</html>
