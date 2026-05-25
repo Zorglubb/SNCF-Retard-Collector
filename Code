@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SNCF Achievements</title>
+    <style>
+        :root {
+            --sncf-blue: #002244;
+            --sncf-purple: #8A2571;
+            --sncf-accent: #CD004D;
+            --bg-color: #F4F4F9;
+            --card-bg: #FFFFFF;
+            --text-color: #333333;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+        }
+
+        header {
+            background: linear-gradient(135deg, var(--sncf-blue), var(--sncf-purple));
+            color: white;
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            margin-bottom: 25px;
+        }
+
+        header h1 { margin: 0; font-size: 1.6rem; }
+        header p { margin: 5px 0 0 0; opacity: 0.9; font-size: 0.9rem; }
+
+        .time-counter {
+            background: #fffae6;
+            border: 2px dashed #ffcc00;
+            border-radius: 12px;
+            padding: 15px;
+            text-align: center;
+            margin-bottom: 20px;
+            color: #cc9900;
+        }
+
+        .time-display {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: var(--sncf-accent);
+            margin-top: 5px;
+        }
+
+        .section-title {
+            font-size: 1.2rem;
+            color: var(--sncf-blue);
+            border-bottom: 2px solid var(--sncf-purple);
+            padding-bottom: 5px;
+            margin-top: 30px;
+        }
+
+        .stats-container {
+            background: var(--card-bg);
+            padding: 15px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+
+        .stat-line {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
+        }
+        .stat-line:last-child { border-bottom: none; }
+        
+        .badge-count {
+            background-color: var(--sncf-accent);
+            color: white;
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-weight: bold;
+            font-size: 0.9rem;
+        }
+
+        .custom-form {
+            background: var(--card-bg);
+            padding: 15px;
+            border-radius: 12px;
+            margin-top: 15px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            display: flex;
+            gap: 10px;
+            flex-direction: column;
+        }
+
+        .custom-form input {
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 1rem;
+        }
+
+        .custom-form button {
+            background-color: var(--sncf-purple);
+            color: white;
+            border: none;
+            padding: 10px;
+            border-radius: 6px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        @media(min-width: 600px) { .grid { grid-template-columns: 1fr 1fr; } }
+
+        .card {
+            background: var(--card-bg);
+            border-left: 5px solid var(--sncf-purple);
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: transform 0.2s;
+        }
+
+        .card.custom-card { border-left-color: var(--sncf-accent); }
+
+        .card-content { flex-grow: 1; padding-right: 10px; }
+        .card-title { font-weight: bold; font-size: 1rem; margin-bottom: 4px; }
+        .card-desc { font-size: 0.85rem; color: #666; }
+
+        .actions {
+            display: flex;
+            gap: 5px;
+            align-items: center;
+        }
+
+        .btn-action {
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 36px;
+            height: 36px;
+            font-size: 1.2rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .btn-add { background-color: var(--sncf-blue); }
+        .btn-add:active { background-color: var(--sncf-accent); }
+        .btn-remove { background-color: #bbb; font-size: 1rem; }
+        .btn-remove:active { background-color: #777; }
+        
+        .reset-btn {
+            background: none;
+            border: 1px solid #ccc;
+            color: #999;
+            padding: 5px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 30px;
+            font-size: 0.8rem;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>SNCF Retard Collector</h1>
+        <p>Le jeu dont vous êtes la victime passive</p>
+    </header>
+
+    <div class="time-counter">
+        ⏳ TEMPS DE VIE PERDU CUMULÉ
+        <div class="time-display" id="total-time-display">0h 00min</div>
+    </div>
+
+    <h2 class="section-title">🏆 Tableau d'Honneur (Top Retards)</h2>
+    <div class="stats-container" id="stats-box">
+        </div>
+
+    <h2 class="section-title">✍️ Ajouter une cause personnalisée</h2>
+    <div class="custom-form">
+        <input type="text" id="custom-title" placeholder="Ex: Grève surprise locale, Alerte Volatile...">
+        <input type="text" id="custom-desc" placeholder="Ex: Un pigeon s'est installé dans le tableau électrique.">
+        <button onclick="addCustomCause()">Créer et valider ce motif</button>
+    </div>
+
+    <h2 class="section-title">⏱️ Valider un retard existant</h2>
+    <div class="grid" id="achievements-grid">
+        </div>
+
+    <center><button class="reset-btn" onclick="resetStats()">Réinitialiser toutes mes stats</button></center>
+
+    <script>
+        // Liste de base (Termes officiels)
+        const defaultCauses = [
+            { id: 'installation_reseau', title: 'Panne d\'une installation du réseau ferré', desc: 'Une anomalie technique non spécifiée sur les infrastructures.' },
+            { id: 'signalisation', title: 'Panne de signalisation', desc: 'Le grand classique des aiguillages capricieux.' },
+            { id: 'materiel', title: 'Panne de matériel roulant', desc: 'La locomotive a décidé de prendre sa retraite aujourd\'hui.' },
+            { id: 'alimentation', title: 'Défaut d\'alimentation électrique', desc: 'Une histoire de caténaire décrochée ou de sous-station.' },
+            { id: 'circulation', title: 'Gestion de la circulation', desc: 'Attente d\'un train de correspondance ou embouteillage de fer.' },
+            { id: 'preparation', title: 'Difficultés de préparation du train', desc: 'La rame n\'était pas prête ou est arrivée en retard du dépôt.' },
+            { id: 'personnel', title: 'Indisponibilité du personnel', desc: 'Le conducteur ou les contrôleurs sont coincés ailleurs.' },
+            { id: 'personnes_voies', title: 'Présence de personnes sur les voies', desc: 'Intrusion dans les emprises ferroviaires, sécurité avant tout.' },
+            { id: 'accident', title: 'Accident de personne', desc: 'Procédure officielle et interruption majeure.' },
+            { id: 'meteo', title: 'Conditions météo défavorables', desc: 'Feu de talus, tempête, ou les mythiques feuilles mortes.' },
+            { id: 'bagage', title: 'Bagage abandonné', desc: 'Alerte colis suspect. Place aux démineurs.' },
+            { id: 'malveillance', title: 'Acte de malveillance / Sabotage', desc: 'Vol de câbles de cuivre ou dégradations.' }
+        ];
+
+        // Structures de données rechargées depuis le stockage local
+        let customCauses = JSON.parse(localStorage.getItem('sncf_custom_causes')) || [];
+        let scores = JSON.parse(localStorage.getItem('sncf_scores')) || {};
+        let timeRecords = JSON.parse(localStorage.getItem('sncf_time_records')) || {};
+
+        function getAllCauses() {
+            return [...defaultCauses, ...customCauses];
+        }
+
+        function saveAll() {
+            localStorage.setItem('sncf_scores', JSON.stringify(scores));
+            localStorage.setItem('sncf_custom_causes', JSON.stringify(customCauses));
+            localStorage.setItem('sncf_time_records', JSON.stringify(timeRecords));
+            render();
+        }
+
+        function increment(id) {
+            const minutesInput = prompt("Combien de minutes de retard pour ce train ? (Ex: 15, 45, 120...)");
+            const minutes = parseInt(minutesInput, 10);
+
+            if (isNaN(minutes) || minutes <= 0) {
+                alert("Action annulée ou durée invalide.");
+                return;
+            }
+
+            if (!scores[id]) scores[id] = 0;
+            if (!timeRecords[id]) timeRecords[id] = [];
+
+            scores[id]++;
+            timeRecords[id].push(minutes);
+            saveAll();
+        }
+
+        function decrement(id) {
+            if (!scores[id] || scores[id] <= 0) {
+                alert("Vous n'avez pas encore validé ce type de retard.");
+                return;
+            }
+
+            if(confirm("Voulez-vous vraiment annuler la dernière entrée pour ce retard ?")) {
+                scores[id]--;
+                if (timeRecords[id] && timeRecords[id].length > 0) {
+                    timeRecords[id].pop(); // Enlever la dernière durée enregistrée
+                }
+                saveAll();
+            }
+        }
+
+        function addCustomCause() {
+            const titleInput = document.getElementById('custom-title');
+            const descInput = document.getElementById('custom-desc');
+            const title = titleInput.value.trim();
+            const desc = descInput.value.trim() || "Cause ajoutée par l'utilisateur.";
+
+            if (!title) {
+                alert("Il faut au moins donner un titre à cette galère !");
+                return;
+            }
+
+            const minutesInput = prompt(`Combien de minutes de retard pour ce nouveau motif : "${title}" ?`);
+            const minutes = parseInt(minutesInput, 10);
+
+            if (isNaN(minutes) || minutes <= 0) {
+                alert("Durée invalide. Le motif n'a pas été créé.");
+                return;
+            }
+
+            const id = 'custom_' + Date.now();
+            customCauses.push({ id, title, desc, isCustom: true });
+            
+            scores[id] = 1;
+            timeRecords[id] = [minutes];
+
+            titleInput.value = '';
+            descInput.value = '';
+
+            saveAll();
+        }
+
+        function resetStats() {
+            if(confirm("Es-tu sûr de vouloir effacer tout ton historique de retard et remettre les compteurs à zéro ?")) {
+                scores = {};
+                customCauses = [];
+                timeRecords = {};
+                saveAll();
+            }
+        }
+
+        function render() {
+            const allCauses = getAllCauses();
+            let totalMinutes = 0;
+
+            // Calcul du temps total cumulé
+            Object.keys(timeRecords).forEach(id => {
+                if(timeRecords[id]) {
+                    totalMinutes += timeRecords[id].reduce((sum, current) => sum + current, 0);
+                }
+            });
+
+            // Conversion en Heures / Minutes
+            const hours = Math.floor(totalMinutes / 60);
+            const remainingMinutes = totalMinutes % 60;
+            document.getElementById('total-time-display').innerText = `${hours}h ${remainingMinutes < 10 ? '0' : ''}${remainingMinutes}min`;
+
+            // Rendu de la grille des boutons
+            const grid = document.getElementById('achievements-grid');
+            grid.innerHTML = '';
+            allCauses.forEach(c => {
+                const cardClass = c.isCustom ? "card custom-card" : "card";
+                const currentCount = scores[c.id] || 0;
+                
+                grid.innerHTML += `
+                    <div class="${cardClass}">
+                        <div class="card-content">
+                            <div class="card-title">${c.title}</div>
+                            <div class="card-desc">${c.desc}</div>
+                        </div>
+                        <div class="actions">
+                            ${currentCount > 0 ? `<button class="btn-action btn-remove" onclick="decrement('${c.id}')">-</button>` : ''}
+                            <button class="btn-action btn-add" onclick="increment('${c.id}')">+</button>
+                        </div>
+                    </div>
+                `;
+            });
+
+            // Rendu du classement (Top Causes)
+            const statsBox = document.getElementById('stats-box');
+            const sortedCauses = [...allCauses].sort((a, b) => (scores[b.id] || 0) - (scores[a.id] || 0));
+            const activeCauses = sortedCauses.filter(c => scores[c.id] > 0);
+
+            if(activeCauses.length === 0) {
+                statsBox.innerHTML = "<p style='text-align:center; color:#888; font-style:italic;'>Aucun retard validé pour l'instant. Le réseau est étonnamment fluide.</p>";
+            } else {
+                statsBox.innerHTML = activeCauses.map(c => {
+                    const totalCauseMinutes = (timeRecords[c.id] || []).reduce((sum, curr) => sum + curr, 0);
+                    const cHours = Math.floor(totalCauseMinutes / 60);
+                    const cMins = totalCauseMinutes % 60;
+                    const durationStr = cHours > 0 ? `${cHours}h${cMins}` : `${cMins}min`;
+
+                    return `
+                        <div class="stat-line">
+                            <span>${c.title} ${c.isCustom ? '🛠️' : ''} <small style="color:#888;">(${durationStr} au total)</small></span>
+                            <span class="badge-count">${scores[c.id]} x</span>
+                        </div>
+                    `;
+                }).join('');
+            }
+        }
+
+        // Premier lancement
+        render();
+    </script>
+</body>
+</html>
